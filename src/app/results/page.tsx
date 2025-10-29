@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Play, Pause, Mic2, Sparkles, Camera, Flame, Wand2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Play, Pause, Mic2, Sparkles, Camera, Flame, Wand2, AlertCircle, ArrowLeft, ImagePlus } from 'lucide-react';
 
 interface CostumeData {
   dataUrl: string;
@@ -61,6 +61,11 @@ export default function ResultsPage() {
   // Audio element ref
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+
+  // Meme generation state
+  const [generatedMeme, setGeneratedMeme] = useState<string | null>(null);
+  const [isGeneratingMeme, setIsGeneratingMeme] = useState(false);
+  const [memeError, setMemeError] = useState<string | null>(null);
 
   useEffect(() => {
     const storedData = sessionStorage.getItem('costumeImage');
@@ -231,6 +236,7 @@ export default function ResultsPage() {
     setInputMessage('');
     setIsProcessing(true);
     setModificationAnalysis(null);
+    setGeneratedMeme(null); // Clear meme when starting a new modification
 
     try {
       // Call the image modification API
@@ -271,6 +277,47 @@ export default function ResultsPage() {
       setModificationAnalysis(`Failed to process modification request: ${errorMessage}`);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleGenerateMeme = async () => {
+    if (!roastText || !costumeData || isGeneratingMeme) return;
+
+    setIsGeneratingMeme(true);
+    setMemeError(null);
+
+    try {
+      // Shorten roast text for meme format (take first sentence or ~100 chars)
+      const shortenedRoast = roastText.split('.')[0] + '.';
+      const memeText = shortenedRoast.length > 120
+        ? shortenedRoast.substring(0, 120) + '...'
+        : shortenedRoast;
+
+      const response = await fetch('/api/generate-meme', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: costumeData.dataUrl,
+          roastText: memeText,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate meme');
+      }
+
+      // Set the generated meme image
+      setGeneratedMeme(data.data.image);
+    } catch (error) {
+      console.error('Error generating meme:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate meme';
+      setMemeError(errorMessage);
+    } finally {
+      setIsGeneratingMeme(false);
     }
   };
 
@@ -383,12 +430,12 @@ export default function ResultsPage() {
       </div>
 
       {/* Error Messages */}
-      {(analysisError || roastError || audioError) && (
+      {(analysisError || roastError || audioError || memeError) && (
         <div className="bg-red-900/20 border-b border-red-800 px-8 py-3">
           <div className="max-w-7xl mx-auto flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-400" />
             <p className="text-red-400 text-sm">
-              {analysisError || roastError || audioError}
+              {analysisError || roastError || audioError || memeError}
             </p>
           </div>
         </div>
@@ -437,7 +484,14 @@ export default function ResultsPage() {
             </div>
 
             <div className="flex-1 relative bg-black/50 rounded-xl overflow-hidden border border-gray-800 hover:border-gray-700 transition-colors">
-              {generatedImage ? (
+              {generatedMeme ? (
+                <Image
+                  src={generatedMeme}
+                  alt="Generated meme"
+                  fill
+                  className="object-contain p-4"
+                />
+              ) : generatedImage ? (
                 <Image
                   src={generatedImage}
                   alt="AI modified costume"
@@ -464,7 +518,7 @@ export default function ResultsPage() {
                       <Sparkles className="w-16 h-16 text-gray-600" />
                     </div>
                     <p className="text-lg mb-2 text-white font-medium">No modifications yet</p>
-                    <p className="text-sm text-gray-500">Use the input below to request changes</p>
+                    <p className="text-sm text-gray-500">Use the input below to request changes or generate a meme</p>
                   </div>
                 </div>
               )}
@@ -473,7 +527,7 @@ export default function ResultsPage() {
 
           {/* Modification Input */}
           <div className="p-8 pt-4">
-            <div className="flex gap-3">
+            <div className="flex gap-3 mb-4">
               <input
                 type="text"
                 value={inputMessage}
@@ -498,6 +552,27 @@ export default function ResultsPage() {
                 )}
               </button>
             </div>
+
+            {/* Generate Meme Button */}
+            {roastText && (
+              <button
+                onClick={handleGenerateMeme}
+                disabled={isGeneratingMeme || !roastText}
+                className="w-full px-6 py-3 bg-[#FF6B35] hover:bg-[#ff8555] disabled:bg-gray-800 disabled:text-gray-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {isGeneratingMeme ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Generating Meme...</span>
+                  </>
+                ) : (
+                  <>
+                    <ImagePlus className="w-5 h-5" />
+                    <span>Generate Meme</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

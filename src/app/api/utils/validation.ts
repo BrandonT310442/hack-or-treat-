@@ -43,6 +43,19 @@ export interface GenerateCostumeResponse {
   error?: string;
 }
 
+export interface GenerateMemeRequest {
+  image?: string; // Optional - not used for generation, only for validation
+  roastText: string;
+}
+
+export interface GenerateMemeResponse {
+  success: boolean;
+  data?: {
+    image: string; // base64 encoded meme image
+  };
+  error?: string;
+}
+
 // Constants
 const MAX_IMAGE_SIZE_MB = Number(process.env.MAX_IMAGE_SIZE_MB) || 20;
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
@@ -219,6 +232,29 @@ export const validateGenerateCostumeRequest = (
   const imageValidation = validateBase64Image(image);
   if (!imageValidation.valid) {
     return imageValidation;
+  }
+
+  return { valid: true };
+};
+
+/**
+ * Validates generate meme request body
+ */
+export const validateGenerateMemeRequest = (
+  body: unknown
+): { valid: boolean; error?: string } => {
+  if (!body || typeof body !== "object") {
+    return { valid: false, error: "Request body is required" };
+  }
+
+  const { roastText } = body as GenerateMemeRequest;
+
+  if (!roastText || typeof roastText !== "string") {
+    return { valid: false, error: "roastText is required" };
+  }
+
+  if (roastText.trim().length === 0) {
+    return { valid: false, error: "roastText cannot be empty" };
   }
 
   return { valid: true };
