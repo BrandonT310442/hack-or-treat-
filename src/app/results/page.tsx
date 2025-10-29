@@ -367,23 +367,13 @@ export default function ResultsPage() {
             />
           </div>
 
-          {/* Costume Analysis */}
-          {costumeType && (
+          {/* Roast Transcript */}
+          {roastText && !isLoadingRoast && (
             <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-800">
-              <h3 className="text-white font-semibold mb-2">Costume Analysis</h3>
-              <p className="text-[#FF6B35] text-sm mb-2">
-                Detected: {costumeType}
+              <h3 className="text-white font-semibold mb-2">Roast Transcript</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                {roastText}
               </p>
-              {failPoints.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-gray-400 text-xs mb-1">Issues Found:</p>
-                  <ul className="list-disc list-inside text-gray-400 text-xs space-y-1">
-                    {failPoints.map((point, index) => (
-                      <li key={index}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           )}
         </div>
