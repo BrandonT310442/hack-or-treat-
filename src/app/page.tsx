@@ -204,7 +204,7 @@ export default function Home() {
             <div>
               <h3 className="font-semibold text-white mb-3">Project</h3>
               <p className="text-gray-400">Hack-or-Treat 2025</p>
-              <a href="#" className="text-[#FF6B35] hover:text-[#ff8555] transition-colors">
+              <a href="https://devpost.com/software/roast-reaper" target="_blank" rel="noopener noreferrer" className="text-[#FF6B35] hover:text-[#ff8555] transition-colors">
                 View on Devpost
               </a>
             </div>

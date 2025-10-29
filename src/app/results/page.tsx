@@ -527,20 +527,22 @@ export default function ResultsPage() {
 
           {/* Modification Input */}
           <div className="p-8 pt-4">
-            <div className="flex gap-3 mb-4">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Describe your modification (e.g., 'add a witch hat')..."
-                className="flex-1 bg-[#1a1a1a] text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 border border-gray-800 placeholder-gray-600 transition-all"
-                disabled={isProcessing}
-              />
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              placeholder="Describe your modification (e.g., 'add a witch hat')..."
+              className="w-full bg-[#1a1a1a] text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 border border-gray-800 placeholder-gray-600 transition-all mb-3"
+              disabled={isProcessing}
+            />
+
+            {/* Buttons Row */}
+            <div className="flex gap-3">
               <button
                 onClick={handleSendMessage}
                 disabled={isProcessing || !inputMessage.trim()}
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-600 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -551,28 +553,27 @@ export default function ResultsPage() {
                   </>
                 )}
               </button>
-            </div>
 
-            {/* Generate Meme Button */}
-            {roastText && (
-              <button
-                onClick={handleGenerateMeme}
-                disabled={isGeneratingMeme || !roastText}
-                className="w-full px-6 py-3 bg-[#FF6B35] hover:bg-[#ff8555] disabled:bg-gray-800 disabled:text-gray-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {isGeneratingMeme ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Generating Meme...</span>
-                  </>
-                ) : (
-                  <>
-                    <ImagePlus className="w-5 h-5" />
-                    <span>Generate Meme</span>
-                  </>
-                )}
-              </button>
-            )}
+              {roastText && (
+                <button
+                  onClick={handleGenerateMeme}
+                  disabled={isGeneratingMeme || !roastText}
+                  className="flex-1 px-6 py-3 bg-[#FF6B35] hover:bg-[#ff8555] disabled:bg-gray-800 disabled:text-gray-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  {isGeneratingMeme ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ImagePlus className="w-5 h-5" />
+                      <span>Generate Meme</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
