@@ -1,72 +1,102 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { NextRequest, NextResponse } from "next/server";
+import { getVisionModel, GENERATION_CONFIGS } from "../utils/gemini";
+import {
+  validateGenerateRoastRequest,
+  GenerateRoastResponse,
+} from "../utils/validation";
+import { loadPrompt, fillPromptTemplate } from "../utils/prompts";
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-export async function POST(request: NextRequest) {
+/**
+ * POST /api/generate-roast
+ * Generates a hilarious roast based on costume analysis
+ */
+export async function POST(req: NextRequest) {
   try {
-    const { imageData } = await request.json();
+    // Parse request body
+    const body = await req.json();
 
-    if (!imageData) {
+    // Validate request
+    const validation = validateGenerateRoastRequest(body);
+    if (!validation.valid) {
       return NextResponse.json(
-        { error: 'Missing required field: imageData' },
+        {
+          success: false,
+          error: validation.error,
+        } as GenerateRoastResponse,
         { status: 400 }
       );
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json(
-        { error: 'Gemini API key not configured' },
-        { status: 500 }
-      );
-    }
+    const { costumeType, failPoints, analysis } = body;
 
-    // Use Gemini Pro Vision for image analysis
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    // Get Gemini model
+    const model = getVisionModel();
 
-    // Convert base64 image data to the format Gemini expects
-    const base64Data = imageData.split(',')[1];
-    const mimeType = imageData.split(':')[1].split(';')[0];
+    // Load and fill the prompt for roast generation
+    const promptTemplate = loadPrompt('generate-roast');
+    const prompt = fillPromptTemplate(promptTemplate, {
+      costumeType,
+      failPoints,
+      analysis,
+    });
 
-    // Create the roast prompt
-    const roastPrompt = `You are a witty, playful AI comedian specializing in Halloween costume roasts.
-Analyze this Halloween costume image and provide a humorous, light-hearted roast.
-
-Guidelines for the roast:
-1. Keep it playful and fun - never mean-spirited or hurtful
-2. Be creative and use Halloween-themed humor
-3. Point out funny details in the costume (colors, accessories, styling, etc.)
-4. Make pop culture references if relevant
-5. End with a compliment or encouraging note
-6. Keep the roast between 3-5 sentences
-7. Use vivid, descriptive language that works well when read aloud
-8. Avoid profanity or offensive content
-
-Generate a hilarious but friendly roast of this Halloween costume!`;
-
-    const imageParts = [
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType,
+    // Call Gemini API
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
         },
-      },
-    ];
+      ],
+      generationConfig: GENERATION_CONFIGS.ROAST,
+    });
 
-    const result = await model.generateContent([roastPrompt, ...imageParts]);
-    const response = result.response;
-    const roastText = response.text();
+    const response = await result.response;
+    const roastText = response.text().trim();
 
+    // Return successful response
     return NextResponse.json({
       success: true,
-      roast: roastText,
-      timestamp: new Date().toISOString(),
-    });
+      data: {
+        roast: roastText,
+      },
+    } as GenerateRoastResponse);
   } catch (error) {
-    console.error('Error generating roast:', error);
+    console.error("Error generating roast:", error);
+
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.message.includes("API key")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "API configuration error. Please contact support.",
+          } as GenerateRoastResponse,
+          { status: 500 }
+        );
+      }
+
+      if (error.message.includes("quota") || error.message.includes("rate limit")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Service is busy. Please try again in a moment.",
+          } as GenerateRoastResponse,
+          { status: 429 }
+        );
+      }
+    }
+
+    // Fallback roast if API fails
     return NextResponse.json(
-      { error: 'Failed to generate roast' },
+      {
+        success: false,
+        error: "Failed to generate roast. Please try again.",
+      } as GenerateRoastResponse,
       { status: 500 }
     );
   }
