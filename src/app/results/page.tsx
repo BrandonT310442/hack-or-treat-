@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { Play, Pause, Mic2, Sparkles, Camera, Flame, Wand2, AlertCircle } from 'lucide-react';
 
 interface CostumeData {
   dataUrl: string;
@@ -281,21 +282,54 @@ export default function ResultsPage() {
     );
   }
 
+  // Show Halloween loading screen while generating roast
+  if (isLoadingAnalysis || isLoadingRoast) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0f] via-[#1a0a1f] to-[#0a0a0f] relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 text-6xl animate-pulse" style={{ animationDuration: '4s' }}>🎃</div>
+          <div className="absolute top-40 right-32 text-5xl animate-pulse" style={{ animationDuration: '3s', animationDelay: '1s' }}>🎃</div>
+          <div className="absolute bottom-32 left-40 text-7xl animate-pulse" style={{ animationDuration: '5s', animationDelay: '2s' }}>🎃</div>
+          <div className="absolute bottom-20 right-20 text-6xl animate-pulse" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }}>🎃</div>
+        </div>
+
+        <div className="text-center z-10">
+          {/* Rotating Pumpkin */}
+          <div className="text-9xl mb-8 animate-spin" style={{ animationDuration: '3s' }}>
+            🎃
+          </div>
+
+          {/* Loading Text */}
+          <div className="space-y-3">
+            <h2 className="text-4xl font-bold text-[#FF6B35] animate-pulse">
+              {isLoadingAnalysis ? 'Analyzing Your Costume...' : 'Brewing Your Roast...'}
+            </h2>
+            <p className="text-gray-300 text-xl">
+              {isLoadingAnalysis ? 'Detecting spooky details' : 'Crafting the perfect roast'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0f]">
       {/* Top Section - Voice Selection & Roast Player */}
-      <div className="bg-[#1a1a1a] border-b border-gray-800 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center gap-4">
+      <div className="bg-[#1a1a1a] border-b border-gray-800 px-8 py-5">
+        <div className="max-w-7xl mx-auto flex items-center gap-6">
           {/* Voice Selection Dropdown */}
           <div className="flex items-center gap-3">
-            <label htmlFor="voice-select" className="text-white text-sm font-medium whitespace-nowrap">
-              Roast Voice:
+            <Mic2 className="w-5 h-5 text-gray-400" />
+            <label htmlFor="voice-select" className="text-gray-300 text-sm font-medium whitespace-nowrap">
+              Voice:
             </label>
             <select
               id="voice-select"
               value={selectedVoice}
               onChange={(e) => setSelectedVoice(e.target.value as VoiceOption)}
-              className="bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent"
+              className="bg-[#2a2a2a] text-white rounded-lg px-4 py-2.5 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent transition-colors"
             >
               {VOICE_OPTIONS.map((voice) => (
                 <option key={voice.id} value={voice.id}>
@@ -310,31 +344,27 @@ export default function ResultsPage() {
             <button
               onClick={isPlaying ? handleStopRoast : handlePlayRoast}
               disabled={isLoadingRoast || isLoadingAudio || !roastText}
-              className="w-10 h-10 bg-[#FF6B35] hover:bg-[#ff8555] disabled:bg-gray-700 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors flex-shrink-0"
+              className="w-11 h-11 bg-[#FF6B35] hover:bg-[#ff8555] disabled:bg-gray-700 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors flex-shrink-0"
             >
               {isLoadingRoast || isLoadingAudio ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : isPlaying ? (
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                </svg>
+                <Pause className="w-5 h-5 text-white" />
               ) : (
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
+                <Play className="w-5 h-5 text-white ml-0.5" />
               )}
             </button>
 
             <div className="flex-1">
-              <div className="w-full bg-gray-800 rounded-full h-2">
+              <div className="w-full bg-[#2a2a2a] rounded-full h-2.5">
                 <div
-                  className="bg-[#FF6B35] h-2 rounded-full transition-all duration-300"
+                  className="bg-[#FF6B35] h-2.5 rounded-full transition-all duration-300"
                   style={{ width: `${audioProgress}%` }}
                 ></div>
               </div>
             </div>
 
-            <div className="text-gray-400 text-sm min-w-[80px] text-right">
+            <div className="text-gray-400 text-sm min-w-[90px] text-right">
               {isLoadingAnalysis ? 'Analyzing...' : isLoadingRoast ? 'Generating...' : isLoadingAudio ? 'Loading...' : isPlaying ? 'Playing...' : 'Ready'}
             </div>
           </div>
@@ -343,8 +373,9 @@ export default function ResultsPage() {
 
       {/* Error Messages */}
       {(analysisError || roastError || audioError) && (
-        <div className="bg-red-900/20 border-b border-red-800 px-6 py-3">
-          <div className="max-w-7xl mx-auto">
+        <div className="bg-red-900/20 border-b border-red-800 px-8 py-3">
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400" />
             <p className="text-red-400 text-sm">
               {analysisError || roastError || audioError}
             </p>
@@ -355,22 +386,29 @@ export default function ResultsPage() {
       {/* Main Content - 2 Columns */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Half - Original Image */}
-        <div className="w-1/2 p-6 border-r border-gray-800 flex flex-col">
-          <h2 className="text-white text-xl font-semibold mb-4 text-center">Original Costume</h2>
-          <div className="flex-1 relative bg-black rounded-lg overflow-hidden mb-4">
+        <div className="w-1/2 p-8 border-r border-gray-800 flex flex-col gap-6">
+          <div className="flex items-center gap-3">
+            <Camera className="w-6 h-6 text-[#FF6B35]" />
+            <h2 className="text-white text-xl font-semibold">Original Costume</h2>
+          </div>
+
+          <div className="flex-1 relative bg-black/50 rounded-xl overflow-hidden border border-gray-800 hover:border-gray-700 transition-colors">
             <Image
               src={costumeData.dataUrl}
               alt="Original costume"
               fill
-              className="object-contain"
+              className="object-contain p-4"
               priority
             />
           </div>
 
           {/* Roast Transcript */}
           {roastText && !isLoadingRoast && (
-            <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-800">
-              <h3 className="text-white font-semibold mb-2">Roast Transcript</h3>
+            <div className="bg-[#1a1a1a] rounded-xl p-5 border border-gray-800">
+              <div className="flex items-center gap-2.5 mb-3">
+                <Flame className="w-5 h-5 text-[#FF6B35]" />
+                <h3 className="text-white font-semibold text-base">Roast Transcript</h3>
+              </div>
               <p className="text-gray-300 text-sm leading-relaxed">
                 {roastText}
               </p>
@@ -381,33 +419,41 @@ export default function ResultsPage() {
         {/* Right Half - Modified Image + Input */}
         <div className="w-1/2 flex flex-col">
           {/* Modified Image */}
-          <div className="flex-1 p-6 pb-0 flex flex-col">
-            <h2 className="text-white text-xl font-semibold mb-4 text-center">AI Modified Costume</h2>
-            <div className="flex-1 relative bg-black rounded-lg overflow-hidden">
+          <div className="flex-1 p-8 pb-4 flex flex-col gap-6">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-6 h-6 text-purple-500" />
+              <h2 className="text-white text-xl font-semibold">AI Modified Costume</h2>
+            </div>
+
+            <div className="flex-1 relative bg-black/50 rounded-xl overflow-hidden border border-gray-800 hover:border-gray-700 transition-colors">
               {generatedImage ? (
                 <Image
                   src={generatedImage}
                   alt="AI modified costume"
                   fill
-                  className="object-contain"
+                  className="object-contain p-4"
                 />
               ) : modificationAnalysis ? (
-                <div className="flex items-center justify-center h-full text-gray-400 p-8">
+                <div className="flex items-center justify-center h-full p-8">
                   <div className="text-center max-w-lg">
-                    <div className="text-4xl mb-4">🎨</div>
-                    <p className="text-lg mb-4 text-white">Modification Analysis</p>
-                    <p className="text-sm leading-relaxed mb-4">{modificationAnalysis}</p>
-                    <p className="text-xs text-gray-500 italic">
-                      Note: Visual image generation coming soon!
+                    <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center">
+                      <Sparkles className="w-12 h-12 text-purple-500" />
+                    </div>
+                    <p className="text-xl mb-4 text-white font-semibold">Modification Analysis</p>
+                    <p className="text-sm leading-relaxed mb-6 text-gray-300">{modificationAnalysis}</p>
+                    <p className="text-xs text-gray-500 bg-[#1a1a1a] rounded-lg p-3 border border-gray-800">
+                      Note: Visual image generation coming soon
                     </p>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="flex items-center justify-center h-full">
                   <div className="text-center">
-                    <div className="text-4xl mb-4">✨</div>
-                    <p className="text-lg mb-2">No modifications yet</p>
-                    <p className="text-sm">Use the input below to request changes</p>
+                    <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                      <Sparkles className="w-16 h-16 text-gray-600" />
+                    </div>
+                    <p className="text-lg mb-2 text-white font-medium">No modifications yet</p>
+                    <p className="text-sm text-gray-500">Use the input below to request changes</p>
                   </div>
                 </div>
               )}
@@ -415,26 +461,29 @@ export default function ResultsPage() {
           </div>
 
           {/* Modification Input */}
-          <div className="p-6 border-t border-gray-800">
-            <div className="flex gap-2">
+          <div className="p-8 pt-4">
+            <div className="flex gap-3">
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Describe your modification (e.g., 'add a witch hat')..."
-                className="flex-1 bg-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#FF6B35]"
+                className="flex-1 bg-[#1a1a1a] text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 border border-gray-800 placeholder-gray-600 transition-all"
                 disabled={isProcessing}
               />
               <button
                 onClick={handleSendMessage}
                 disabled={isProcessing || !inputMessage.trim()}
-                className="px-6 py-3 bg-[#FF6B35] hover:bg-[#ff8555] disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium rounded-lg transition-colors"
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-600 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
               >
                 {isProcessing ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : (
-                  'Modify'
+                  <>
+                    <Wand2 className="w-4 h-4" />
+                    <span>Modify</span>
+                  </>
                 )}
               </button>
             </div>
