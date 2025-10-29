@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Play, Pause, Mic2, Sparkles, Camera, Flame, Wand2, AlertCircle } from 'lucide-react';
+import { Play, Pause, Mic2, Sparkles, Camera, Flame, Wand2, AlertCircle, ArrowLeft } from 'lucide-react';
 
 interface CostumeData {
   dataUrl: string;
@@ -319,6 +319,17 @@ export default function ResultsPage() {
       {/* Top Section - Voice Selection & Roast Player */}
       <div className="bg-[#1a1a1a] border-b border-gray-800 px-8 py-5">
         <div className="max-w-7xl mx-auto flex items-center gap-6">
+          {/* Back Button */}
+          <button
+            onClick={() => router.push('/')}
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">Back</span>
+          </button>
+
+          <div className="w-px h-8 bg-gray-800"></div>
+
           {/* Voice Selection Dropdown */}
           <div className="flex items-center gap-3">
             <Mic2 className="w-5 h-5 text-gray-400" />
