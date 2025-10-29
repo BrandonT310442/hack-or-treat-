@@ -5,6 +5,7 @@ import {
   GenerateCostumeResponse,
   parseImageData,
 } from "../utils/validation";
+import { loadPrompt, fillPromptTemplate } from "../utils/prompts";
 
 /**
  * POST /api/generate-costume
@@ -35,13 +36,11 @@ export async function POST(req: NextRequest) {
     // Get image generation model
     const model = getImageGenerationModel();
 
-    // Create detailed prompt for image editing
-    const basePrompt = improvementPrompt ||
-      `Transform this ${costumeType} costume into a professional, high-quality version. ` +
-      `Perfect execution with authentic materials, accurate colors, proper fit, and meticulous attention to detail. ` +
-      `Studio photography, 4K quality, dramatic lighting, professional costume design. ` +
-      `Show what this ${costumeType} costume should actually look like when done right. ` +
-      `Premium materials, expert craftsmanship, authentic details, photorealistic.`;
+    // Load and fill the prompt for costume generation
+    const promptTemplate = loadPrompt('generate-costume');
+    const basePrompt = improvementPrompt || fillPromptTemplate(promptTemplate, {
+      costumeType,
+    });
 
     // Call Gemini API for image generation (text-and-image-to-image)
     const result = await model.generateContent({
