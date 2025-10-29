@@ -1,0 +1,142 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getImageGenerationModel, GENERATION_CONFIGS } from "../utils/gemini";
+import {
+  validateGenerateCostumeRequest,
+  GenerateCostumeResponse,
+} from "../utils/validation";
+
+/**
+ * POST /api/generate-costume
+ * Generates an improved version of the costume using Imagen
+ */
+export async function POST(req: NextRequest) {
+  try {
+    // Parse request body
+    const body = await req.json();
+
+    // Validate request
+    const validation = validateGenerateCostumeRequest(body);
+    if (!validation.valid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: validation.error,
+        } as GenerateCostumeResponse,
+        { status: 400 }
+      );
+    }
+
+    const { costumeType, improvementPrompt } = body;
+
+    // Get image generation model
+    const model = getImageGenerationModel();
+
+    // Create detailed prompt for image generation
+    const basePrompt = improvementPrompt ||
+      `Professional, high-quality ${costumeType} Halloween costume. ` +
+      `Perfect execution with authentic materials, accurate colors, proper fit, and meticulous attention to detail. ` +
+      `Studio photography, 4K quality, dramatic lighting, professional costume design. ` +
+      `Show what this ${costumeType} costume should actually look like when done right. ` +
+      `Premium materials, expert craftsmanship, authentic details.`;
+
+    // Call Imagen API
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: basePrompt,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        ...GENERATION_CONFIGS.IMAGE,
+        // Imagen-specific parameters
+        responseMimeType: "image/png",
+      },
+    });
+
+    const response = await result.response;
+
+    // Extract image data from response
+    // Imagen returns image in the candidates[0].content.parts[0].inlineData
+    const candidates = response.candidates;
+    if (!candidates || candidates.length === 0) {
+      throw new Error("No image generated");
+    }
+
+    const imagePart = candidates[0].content.parts.find(
+      (part: { inlineData?: { data: string; mimeType: string } }) =>
+        part.inlineData
+    );
+
+    if (!imagePart || !imagePart.inlineData) {
+      throw new Error("No image data in response");
+    }
+
+    const imageData = imagePart.inlineData.data;
+    const mimeType = imagePart.inlineData.mimeType;
+
+    // Return successful response with base64 image
+    return NextResponse.json({
+      success: true,
+      data: {
+        image: `data:${mimeType};base64,${imageData}`,
+        prompt: basePrompt,
+      },
+    } as GenerateCostumeResponse);
+  } catch (error) {
+    console.error("Error generating costume image:", error);
+
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.message.includes("API key")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "API configuration error. Please contact support.",
+          } as GenerateCostumeResponse,
+          { status: 500 }
+        );
+      }
+
+      if (error.message.includes("quota") || error.message.includes("rate limit")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Service is busy. Please try again in a moment.",
+          } as GenerateCostumeResponse,
+          { status: 429 }
+        );
+      }
+
+      if (
+        error.message.includes("safety") ||
+        error.message.includes("blocked")
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Image generation blocked due to content policy. Try a different costume type.",
+          } as GenerateCostumeResponse,
+          { status: 400 }
+        );
+      }
+
+      // Log the specific error for debugging
+      console.error("Specific error:", error.message);
+    }
+
+    // Generic error response
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to generate costume image. Please try again.",
+      } as GenerateCostumeResponse,
+      { status: 500 }
+    );
+  }
+}
