@@ -22,8 +22,8 @@ export const MODELS = {
   // Vision model for image analysis and roast generation
   VISION: "gemini-2.0-flash-exp",
 
-  // Image generation model (Imagen)
-  IMAGE_GENERATION: "imagen-3.0-generate-001",
+  // Image generation model (Gemini 2.5 Flash with image generation)
+  IMAGE_GENERATION: "gemini-2.5-flash-image",
 } as const;
 
 // Get vision model instance

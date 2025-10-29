@@ -3,6 +3,7 @@ import { getImageGenerationModel, GENERATION_CONFIGS } from "../utils/gemini";
 import {
   validateGenerateCostumeRequest,
   GenerateCostumeResponse,
+  parseImageData,
 } from "../utils/validation";
 
 /**
@@ -26,20 +27,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { costumeType, improvementPrompt } = body;
+    const { image, costumeType, improvementPrompt } = body;
+
+    // Parse the original costume image
+    const { base64, mimeType: inputMimeType } = parseImageData(image);
 
     // Get image generation model
     const model = getImageGenerationModel();
 
-    // Create detailed prompt for image generation
+    // Create detailed prompt for image editing
     const basePrompt = improvementPrompt ||
-      `Professional, high-quality ${costumeType} Halloween costume. ` +
+      `Transform this ${costumeType} costume into a professional, high-quality version. ` +
       `Perfect execution with authentic materials, accurate colors, proper fit, and meticulous attention to detail. ` +
       `Studio photography, 4K quality, dramatic lighting, professional costume design. ` +
       `Show what this ${costumeType} costume should actually look like when done right. ` +
-      `Premium materials, expert craftsmanship, authentic details.`;
+      `Premium materials, expert craftsmanship, authentic details, photorealistic.`;
 
-    // Call Imagen API
+    // Call Gemini API for image generation (text-and-image-to-image)
     const result = await model.generateContent({
       contents: [
         {
@@ -48,14 +52,16 @@ export async function POST(req: NextRequest) {
             {
               text: basePrompt,
             },
+            {
+              inlineData: {
+                mimeType: inputMimeType,
+                data: base64,
+              },
+            },
           ],
         },
       ],
-      generationConfig: {
-        ...GENERATION_CONFIGS.IMAGE,
-        // Imagen-specific parameters
-        responseMimeType: "image/png",
-      },
+      generationConfig: GENERATION_CONFIGS.IMAGE,
     });
 
     const response = await result.response;
@@ -77,18 +83,19 @@ export async function POST(req: NextRequest) {
     }
 
     const imageData = imagePart.inlineData.data;
-    const mimeType = imagePart.inlineData.mimeType;
+    const outputMimeType = imagePart.inlineData.mimeType;
 
     // Return successful response with base64 image
     return NextResponse.json({
       success: true,
       data: {
-        image: `data:${mimeType};base64,${imageData}`,
+        image: `data:${outputMimeType};base64,${imageData}`,
         prompt: basePrompt,
       },
     } as GenerateCostumeResponse);
   } catch (error) {
     console.error("Error generating costume image:", error);
+    console.error("Full error details:", JSON.stringify(error, null, 2));
 
     // Handle specific error types
     if (error instanceof Error) {

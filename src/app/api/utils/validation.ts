@@ -29,6 +29,7 @@ export interface GenerateRoastResponse {
 }
 
 export interface GenerateCostumeRequest {
+  image: string; // base64 encoded original costume image
   costumeType: string;
   improvementPrompt?: string;
 }
@@ -204,10 +205,20 @@ export const validateGenerateCostumeRequest = (
     return { valid: false, error: "Request body is required" };
   }
 
-  const { costumeType } = body as GenerateCostumeRequest;
+  const { image, costumeType } = body as GenerateCostumeRequest;
+
+  if (!image || typeof image !== "string") {
+    return { valid: false, error: "image is required" };
+  }
 
   if (!costumeType || typeof costumeType !== "string") {
     return { valid: false, error: "costumeType is required" };
+  }
+
+  // Validate the image
+  const imageValidation = validateBase64Image(image);
+  if (!imageValidation.valid) {
+    return imageValidation;
   }
 
   return { valid: true };

@@ -131,12 +131,13 @@ Generates a hilarious roast based on the costume analysis.
 
 ### 3. POST `/api/generate-costume`
 
-Generates an improved version of the costume using AI image generation (Imagen).
+Generates an improved version of the costume using AI image generation (text-and-image-to-image).
 
 **Request:**
 
 ```json
 {
+  "image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...", // or raw base64
   "costumeType": "Dracula",
   "improvementPrompt": "Professional vampire costume with high-quality materials" // optional
 }
@@ -218,6 +219,7 @@ const costumeResponse = await fetch('http://localhost:3000/api/generate-costume'
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
+    image: base64ImageData, // same image as used in analysis
     costumeType: analysis.data.costumeType
   })
 });
@@ -247,6 +249,7 @@ curl -X POST http://localhost:3000/api/generate-roast \
 curl -X POST http://localhost:3000/api/generate-costume \
   -H "Content-Type: application/json" \
   -d '{
+    "image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
     "costumeType": "Dracula"
   }'
 ```
@@ -272,6 +275,7 @@ All endpoints return a consistent error format:
 | `API configuration error` | Missing API key | Check `.env.local` file |
 | `Service is busy` | Rate limit hit | Wait and retry |
 | `costumeType is required` | Missing required field | Include all required fields |
+| `image is required` | Missing image in generate-costume | Include original costume image |
 
 ## Rate Limiting
 
