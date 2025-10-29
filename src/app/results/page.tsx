@@ -22,17 +22,44 @@ const VOICE_OPTIONS: Array<{ id: VoiceOption; name: string; description: string 
   { id: 'squidward', name: 'Squidward', description: 'Bold and brash' },
 ];
 
+// Map voice options to Fish Audio reference IDs
+const VOICE_REFERENCE_MAP: Record<VoiceOption, string> = {
+  'barack-obama': '4ce7e917cedd4bc2bb2e6ff3a46acaa1',
+  'spongebob': '54e3a85ac9594ffa83264b8a494b901b',
+  'patrick': 'd75c270eaee14c8aa1e9e980cc37cf1b',
+  'joker': 'fad5a5a6770e47019f566b8f8c0ff609',
+  'the-rock': '7cc3a7aca00a489eac430d35fd6203e3',
+  'elmo': '193f7f8f649b418382885c5fb4fb7109',
+  'squidward': 'dcc29b2dcbc04278bc5a137debea52ec',
+};
+
 export default function ResultsPage() {
   const router = useRouter();
   const [costumeData, setCostumeData] = useState<CostumeData | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [modificationAnalysis, setModificationAnalysis] = useState<string | null>(null);
   const [roastText, setRoastText] = useState<string>('');
   const [isLoadingRoast, setIsLoadingRoast] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [selectedVoice, setSelectedVoice] = useState<VoiceOption>('barack-obama');
+
+  // Analysis data
+  const [costumeType, setCostumeType] = useState<string>('');
+  const [failPoints, setFailPoints] = useState<string[]>([]);
+  const [overallAssessment, setOverallAssessment] = useState<string>('');
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+
+  // Error states
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [roastError, setRoastError] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+
+  // Audio element ref
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
 
   useEffect(() => {
     const storedData = sessionStorage.getItem('costumeImage');
@@ -43,91 +70,157 @@ export default function ResultsPage() {
     }
   }, [router]);
 
-  // Generate roast when costume data is loaded
+  // Analyze costume and generate roast when costume data is loaded
   useEffect(() => {
-    const generateRoast = async () => {
+    const analyzeAndGenerateRoast = async () => {
       if (!costumeData || roastText) return;
 
-      setIsLoadingRoast(true);
+      // Step 1: Analyze the costume
+      setIsLoadingAnalysis(true);
+      setAnalysisError(null);
+
       try {
-        const response = await fetch('/api/generate-roast', {
+        const analyzeResponse = await fetch('/api/analyze', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            imageData: costumeData.dataUrl,
+            image: costumeData.dataUrl,
           }),
         });
 
-        const data = await response.json();
+        const analyzeData = await analyzeResponse.json();
 
-        if (response.ok && data.roast) {
-          setRoastText(data.roast);
-        } else {
-          setRoastText('Failed to generate roast. Please refresh the page to try again.');
+        if (!analyzeResponse.ok || !analyzeData.success) {
+          throw new Error(analyzeData.error || 'Failed to analyze costume');
         }
+
+        // Store analysis data
+        setCostumeType(analyzeData.data.costumeType);
+        setFailPoints(analyzeData.data.failPoints || []);
+        setOverallAssessment(analyzeData.data.overallAssessment);
+
+        // Step 2: Generate roast using analysis data
+        setIsLoadingRoast(true);
+        setRoastError(null);
+
+        const roastResponse = await fetch('/api/generate-roast', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            costumeType: analyzeData.data.costumeType,
+            failPoints: analyzeData.data.failPoints || [],
+            analysis: analyzeData.data.overallAssessment,
+          }),
+        });
+
+        const roastData = await roastResponse.json();
+
+        if (!roastResponse.ok || !roastData.success) {
+          throw new Error(roastData.error || 'Failed to generate roast');
+        }
+
+        setRoastText(roastData.data.roast);
       } catch (error) {
-        console.error('Error generating roast:', error);
-        setRoastText('Failed to generate roast. Please refresh the page to try again.');
+        console.error('Error in analyze/roast flow:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Something went wrong';
+
+        // Set appropriate error
+        if (!costumeType) {
+          setAnalysisError(errorMessage);
+        } else {
+          setRoastError(errorMessage);
+        }
       } finally {
+        setIsLoadingAnalysis(false);
         setIsLoadingRoast(false);
       }
     };
 
-    generateRoast();
+    analyzeAndGenerateRoast();
   }, [costumeData, roastText]);
 
-  const handlePlayRoast = () => {
-    if (!roastText || isPlaying) return;
+  const handlePlayRoast = async () => {
+    if (!roastText || isPlaying || isLoadingAudio) return;
 
-    // Use Web Speech API for text-to-speech
-    const utterance = new SpeechSynthesisUtterance(roastText);
-    utterance.rate = 0.9; // Slightly slower for better clarity
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
+    setIsLoadingAudio(true);
+    setAudioError(null);
 
-    // Track progress
-    utterance.onstart = () => {
-      setIsPlaying(true);
-      setAudioProgress(0);
-    };
+    try {
+      // Get the reference ID for the selected voice
+      const referenceId = VOICE_REFERENCE_MAP[selectedVoice];
 
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setAudioProgress(100);
-    };
+      // Call the generate-audio API
+      const response = await fetch('/api/generate-audio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: roastText,
+          reference_id: referenceId || undefined,
+        }),
+      });
 
-    utterance.onerror = () => {
-      setIsPlaying(false);
-      console.error('Speech synthesis error');
-    };
-
-    // Simulate progress (since Web Speech API doesn't provide real-time progress)
-    const words = roastText.split(' ').length;
-    const estimatedDuration = words * 400; // Rough estimate: 400ms per word
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-      progress += 1;
-      setAudioProgress(Math.min(progress, 99));
-      if (progress >= 100) {
-        clearInterval(progressInterval);
+      if (!response.ok) {
+        throw new Error('Failed to generate audio');
       }
-    }, estimatedDuration / 100);
 
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setAudioProgress(100);
-      clearInterval(progressInterval);
-    };
+      // Get audio blob
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
 
-    window.speechSynthesis.speak(utterance);
+      // Create and configure audio element
+      const audio = new Audio(audioUrl);
+
+      audio.onloadedmetadata = () => {
+        setIsLoadingAudio(false);
+        setIsPlaying(true);
+        setAudioProgress(0);
+        audio.play();
+      };
+
+      audio.ontimeupdate = () => {
+        if (audio.duration) {
+          const progress = (audio.currentTime / audio.duration) * 100;
+          setAudioProgress(progress);
+        }
+      };
+
+      audio.onended = () => {
+        setIsPlaying(false);
+        setAudioProgress(100);
+        URL.revokeObjectURL(audioUrl);
+        setAudioElement(null);
+      };
+
+      audio.onerror = () => {
+        setIsPlaying(false);
+        setIsLoadingAudio(false);
+        setAudioError('Failed to play audio');
+        URL.revokeObjectURL(audioUrl);
+        setAudioElement(null);
+      };
+
+      setAudioElement(audio);
+    } catch (error) {
+      console.error('Error generating/playing audio:', error);
+      setAudioError('Failed to generate audio. Please try again.');
+      setIsLoadingAudio(false);
+    }
   };
 
   const handleStopRoast = () => {
-    window.speechSynthesis.cancel();
-    setIsPlaying(false);
-    setAudioProgress(0);
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      setIsPlaying(false);
+      setAudioProgress(0);
+      setAudioElement(null);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -136,6 +229,7 @@ export default function ResultsPage() {
     const userMessage = inputMessage.trim();
     setInputMessage('');
     setIsProcessing(true);
+    setModificationAnalysis(null);
 
     try {
       // Call the image modification API
@@ -154,7 +248,16 @@ export default function ResultsPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to modify image');
+        const errorMsg = data.error || 'Failed to modify image';
+        console.error('API Error:', errorMsg, data);
+        setModificationAnalysis(`Error: ${errorMsg}`);
+        setIsProcessing(false);
+        return;
+      }
+
+      // Display analysis text from API
+      if (data.analysis) {
+        setModificationAnalysis(data.analysis);
       }
 
       // If a modified image URL is returned, update the generated image
@@ -163,6 +266,8 @@ export default function ResultsPage() {
       }
     } catch (error) {
       console.error('Error modifying image:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setModificationAnalysis(`Failed to process modification request: ${errorMessage}`);
     } finally {
       setIsProcessing(false);
     }
@@ -204,10 +309,10 @@ export default function ResultsPage() {
           <div className="flex-1 flex items-center gap-4">
             <button
               onClick={isPlaying ? handleStopRoast : handlePlayRoast}
-              disabled={isLoadingRoast || !roastText}
+              disabled={isLoadingRoast || isLoadingAudio || !roastText}
               className="w-10 h-10 bg-[#FF6B35] hover:bg-[#ff8555] disabled:bg-gray-700 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors flex-shrink-0"
             >
-              {isLoadingRoast ? (
+              {isLoadingRoast || isLoadingAudio ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : isPlaying ? (
                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -229,19 +334,30 @@ export default function ResultsPage() {
               </div>
             </div>
 
-            <div className="text-gray-400 text-sm min-w-[60px] text-right">
-              {isLoadingRoast ? 'Loading...' : isPlaying ? 'Playing...' : 'Ready'}
+            <div className="text-gray-400 text-sm min-w-[80px] text-right">
+              {isLoadingAnalysis ? 'Analyzing...' : isLoadingRoast ? 'Generating...' : isLoadingAudio ? 'Loading...' : isPlaying ? 'Playing...' : 'Ready'}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Error Messages */}
+      {(analysisError || roastError || audioError) && (
+        <div className="bg-red-900/20 border-b border-red-800 px-6 py-3">
+          <div className="max-w-7xl mx-auto">
+            <p className="text-red-400 text-sm">
+              {analysisError || roastError || audioError}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Main Content - 2 Columns */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Half - Original Image */}
         <div className="w-1/2 p-6 border-r border-gray-800 flex flex-col">
           <h2 className="text-white text-xl font-semibold mb-4 text-center">Original Costume</h2>
-          <div className="flex-1 relative bg-black rounded-lg overflow-hidden">
+          <div className="flex-1 relative bg-black rounded-lg overflow-hidden mb-4">
             <Image
               src={costumeData.dataUrl}
               alt="Original costume"
@@ -250,6 +366,26 @@ export default function ResultsPage() {
               priority
             />
           </div>
+
+          {/* Costume Analysis */}
+          {costumeType && (
+            <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-800">
+              <h3 className="text-white font-semibold mb-2">Costume Analysis</h3>
+              <p className="text-[#FF6B35] text-sm mb-2">
+                Detected: {costumeType}
+              </p>
+              {failPoints.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-gray-400 text-xs mb-1">Issues Found:</p>
+                  <ul className="list-disc list-inside text-gray-400 text-xs space-y-1">
+                    {failPoints.map((point, index) => (
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Half - Modified Image + Input */}
@@ -265,6 +401,17 @@ export default function ResultsPage() {
                   fill
                   className="object-contain"
                 />
+              ) : modificationAnalysis ? (
+                <div className="flex items-center justify-center h-full text-gray-400 p-8">
+                  <div className="text-center max-w-lg">
+                    <div className="text-4xl mb-4">🎨</div>
+                    <p className="text-lg mb-4 text-white">Modification Analysis</p>
+                    <p className="text-sm leading-relaxed mb-4">{modificationAnalysis}</p>
+                    <p className="text-xs text-gray-500 italic">
+                      Note: Visual image generation coming soon!
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-500">
                   <div className="text-center">

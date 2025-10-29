@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+import { getImageGenerationModel, GENERATION_CONFIGS } from '../utils/gemini';
+import { parseImageData } from '../utils/validation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,62 +13,113 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json(
-        { error: 'Gemini API key not configured' },
-        { status: 500 }
-      );
-    }
+    // Parse the original image data
+    const { base64, mimeType } = parseImageData(imageData);
 
-    // Use Gemini Pro Vision for image understanding and generation guidance
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-
-    // Convert base64 image data to the format Gemini expects
-    const base64Data = imageData.split(',')[1];
-    const mimeType = imageData.split(':')[1].split(';')[0];
+    // Get image generation model (gemini-2.5-flash-image)
+    const model = getImageGenerationModel();
 
     // Create the modification prompt
-    const systemPrompt = `You are an AI assistant that helps modify Halloween costume images.
-The user has uploaded a costume photo and wants to make changes to it.
-Analyze the image and the user's request, then provide a detailed description of how the image should be modified.
-Be creative and Halloween-themed in your suggestions.
+    const modificationPrompt = `Modify this Halloween costume image based on the following request: ${prompt}
 
-User request: ${prompt}
+Keep the original costume recognizable but enhance it according to the request.
+Make the modifications look natural and maintain the Halloween theme.
+Ensure the result is appropriate for all audiences.`;
 
-Provide a response that:
-1. Acknowledges what you see in the original image
-2. Describes the specific modifications you would make
-3. Explains how these modifications enhance the costume
-
-Keep your response conversational and fun, matching the Halloween theme.`;
-
-    const imageParts = [
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType,
+    // Call Gemini API for image generation (text-and-image-to-image)
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: modificationPrompt,
+            },
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: base64,
+              },
+            },
+          ],
         },
-      },
-    ];
+      ],
+      generationConfig: GENERATION_CONFIGS.IMAGE,
+    });
 
-    const result = await model.generateContent([systemPrompt, ...imageParts]);
-    const response = result.response;
-    const analysisText = response.text();
+    const response = await result.response;
 
-    // Note: For actual image generation, you would need to integrate with an image generation API
-    // like DALL-E, Stable Diffusion, or Imagen. For now, we'll return the analysis
-    // and a note that image generation will be added.
+    // Extract image data from response
+    const candidates = response.candidates;
+    if (!candidates || candidates.length === 0) {
+      throw new Error('No image generated');
+    }
 
+    const imagePart = candidates[0].content.parts.find(
+      (part: { inlineData?: { data: string; mimeType: string } }) =>
+        part.inlineData
+    );
+
+    if (!imagePart || !imagePart.inlineData) {
+      throw new Error('No image data in response');
+    }
+
+    const generatedImageData = imagePart.inlineData.data;
+    const outputMimeType = imagePart.inlineData.mimeType;
+
+    // Return successful response with base64 image
     return NextResponse.json({
       success: true,
-      analysis: analysisText,
-      message: 'Image modification analysis complete. Visual generation coming soon!',
-      // In a full implementation, you would return: modifiedImageUrl or modifiedImageData
+      modifiedImageData: `data:${outputMimeType};base64,${generatedImageData}`,
+      analysis: `Successfully modified the costume image: ${prompt}`,
+      message: 'Image modification complete!',
     });
   } catch (error) {
     console.error('Error modifying image:', error);
+    console.error('Full error details:', JSON.stringify(error, null, 2));
+
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'API configuration error. Please contact support.',
+          },
+          { status: 500 }
+        );
+      }
+
+      if (error.message.includes('quota') || error.message.includes('rate limit')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Service is busy. Please try again in a moment.',
+          },
+          { status: 429 }
+        );
+      }
+
+      if (error.message.includes('safety') || error.message.includes('blocked')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Image generation blocked due to content policy. Try a different modification.',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Log the specific error for debugging
+      console.error('Specific error:', error.message);
+    }
+
+    // Generic error response
     return NextResponse.json(
-      { error: 'Failed to process image modification request' },
+      {
+        success: false,
+        error: 'Failed to modify image. Please try again.',
+      },
       { status: 500 }
     );
   }
