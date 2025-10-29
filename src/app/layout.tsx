@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Costume Roaster | Get Your Halloween Costume Roasted by AI",
+  title: "Roast Reaper | Get Your Halloween Costume Roasted by AI",
   description: "Upload your Halloween costume and get hilariously roasted by AI. See what your costume should have looked like with AI-generated improvements. Powered by Gemini.",
   keywords: ["Halloween", "AI", "costume roaster", "funny", "roast", "Halloween costume"],
   authors: [{ name: "Hack-or-Treat 2025" }],

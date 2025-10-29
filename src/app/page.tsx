@@ -120,7 +120,7 @@ export default function Home() {
         {/* Hero Section */}
         <div className="text-center mb-20">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-            AI Costume Roaster
+            Roast Reaper
           </h1>
           <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto">
             Upload your Halloween costume and let AI roast your costume
@@ -210,7 +210,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-600 text-xs">
-            <p>&copy; 2025 AI Costume Roaster. All rights reserved.</p>
+            <p>&copy; 2025 Roast Reaper. All rights reserved.</p>
           </div>
         </footer>
       </main>

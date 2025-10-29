@@ -1,4 +1,4 @@
-# AI Costume Roaster
+# Roast Reaper
 
 A fun AI-powered web application that analyzes Halloween costumes and provides humorous roasts with voice narration. Built for Hack-or-Treat 2025.
 
