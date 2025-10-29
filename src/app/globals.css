@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0f;
+  --foreground: #ededed;
+  --halloween-orange: #FF6B35;
 }
 
 @theme inline {
@@ -12,15 +13,137 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: linear-gradient(180deg, #0a0a1f 0%, #1a0a2e 50%, #0a0a0f 100%);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+  position: relative;
+  min-height: 100vh;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Spooky atmosphere overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(138, 43, 226, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(255, 107, 53, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Floating elements decoration */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 15 L35 10 L40 15 L35 12 L35 20 Z' fill='rgba(139, 69, 19, 0.1)' /%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='2' fill='rgba(255, 255, 255, 0.05)' /%3E%3C/svg%3E");
+  background-size: 200px 200px, 100px 100px;
+  background-position: 0 0, 50px 50px;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+  animation: float 60s linear infinite;
+}
+
+@keyframes float {
+  from { background-position: 0 0, 50px 50px; }
+  to { background-position: 200px 200px, 250px 250px; }
+}
+
+/* Decorative pumpkins */
+.pumpkin-decoration {
+  position: fixed;
+  pointer-events: none;
+  opacity: 0.2;
+  z-index: 0;
+}
+
+.pumpkin-1 {
+  top: 10%;
+  left: 5%;
+  width: 120px;
+  height: 120px;
+  animation: float-slow 20s ease-in-out infinite;
+}
+
+.pumpkin-2 {
+  top: 60%;
+  right: 8%;
+  width: 100px;
+  height: 100px;
+  animation: float-slow 25s ease-in-out infinite reverse;
+}
+
+.pumpkin-3 {
+  bottom: 15%;
+  left: 10%;
+  width: 90px;
+  height: 90px;
+  animation: float-slow 22s ease-in-out infinite;
+}
+
+.pumpkin-4 {
+  top: 30%;
+  right: 15%;
+  width: 80px;
+  height: 80px;
+  animation: float-slow 18s ease-in-out infinite reverse;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+/* Ensure content is above background */
+main {
+  position: relative;
+  z-index: 1;
+}
+
+/* Custom scrollbar - Halloween themed, hidden until scrolling */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 5px;
+  transition: background 0.3s ease;
+}
+
+/* Show scrollbar on hover or when scrolling */
+html:hover ::-webkit-scrollbar-track {
+  background: #1a0a2e;
+}
+
+html:hover ::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 53, 0.5);
+}
+
+html:hover ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 107, 53, 0.7);
+}
+
+/* Focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--halloween-orange);
+  outline-offset: 2px;
 }
