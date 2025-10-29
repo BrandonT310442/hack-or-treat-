@@ -29,7 +29,6 @@ We need to:
 - Actual image generation implementation in `/api/modify-image` (noted as future work)
 - UI/UX redesigns beyond what's necessary for API integration
 - Additional API endpoints
-- Voice reference ID mapping (will use default voices)
 
 ## Technical Approach
 
@@ -88,12 +87,17 @@ We need to:
 
 4. **Map voice characters to Fish Audio reference IDs**
    - Location: `src/app/results/page.tsx:13-23`
-   - Dependencies: Fish Audio API documentation/testing
-   - Validation: Voice mapping constant created
+   - Dependencies: None (reference IDs provided)
+   - Validation: Voice mapping constant created with correct IDs
    - Implementation:
-     - Research Fish Audio voice reference IDs for characters
-     - Create `VOICE_REFERENCE_MAP` mapping VoiceOption to reference_id
-     - If IDs not available, use defaults and add TODO comment
+     - Create `VOICE_REFERENCE_MAP` constant with the following mappings:
+       - `'barack-obama'`: TBD (not provided - use default or request ID)
+       - `'spongebob'`: `'54e3a85ac9594ffa83264b8a494b901b'`
+       - `'patrick'`: `'d75c270eaee14c8aa1e9e980cc37cf1b'`
+       - `'joker'`: `'fad5a5a6770e47019f566b8f8c0ff609'`
+       - `'the-rock'`: `'7cc3a7aca00a489eac430d35fd6203e3'`
+       - `'elmo'`: `'193f7f8f649b418382885c5fb4fb7109'`
+       - `'squidward'`: `'dcc29b2dcbc04278bc5a137debea52ec'`
 
 5. **Replace Web Speech API with generate-audio API**
    - Location: `src/app/results/page.tsx:81-125`
@@ -150,63 +154,3 @@ We need to:
      - Show placeholder message that actual image generation is coming soon
      - Store modification history (optional)
      - Add visual feedback for successful API call
-
-## Testing Requirements
-
-### Unit Tests
-- `results/page.tsx`: Test analysis API call on mount
-- `results/page.tsx`: Test roast generation with proper parameters
-- `results/page.tsx`: Test audio playback with character voice selection
-- Error handling for each API call
-
-### Integration Tests
-- **Full roast flow**: Upload image → Analyze → Generate roast → Play audio
-- **Image modification flow**: Upload → Modify image → Display result
-- **Error recovery**: API failures → User sees error → Can retry
-
-### Manual Validation
-- Upload costume image, verify analysis appears correctly
-- Verify roast is generated automatically after analysis
-- Select different character voices, verify audio plays with correct voice
-- Test image modification request, verify analysis displayed
-- Test error cases: network failure, API errors, invalid responses
-- Verify loading states show appropriately
-- Test audio controls: play, pause, progress bar accuracy
-
-## Considerations & Alternatives
-
-### Potential Considerations
-- **API Rate Limiting**: Multiple sequential API calls (analyze → roast → audio) may hit rate limits
-  - Consider showing estimated wait times
-  - Implement exponential backoff for retries
-- **Audio File Size**: Audio responses may be large
-  - Consider streaming if Fish Audio API supports it
-  - Show download progress for large audio files
-- **Voice Availability**: Fish Audio may not have all character voices
-  - Fallback to closest available voice
-  - Document which voices are available
-- **Session Storage**: Image data stored in sessionStorage may be lost on page refresh
-  - Consider adding warning before user navigates away
-  - Or implement localStorage persistence
-
-### Alternative Approaches
-- **Parallel API Calls**: Could call analyze and start generating roast simultaneously
-  - Trade-off: May waste API quota if analysis fails
-  - Chosen approach: Sequential for reliability
-- **Server-Side Generation**: Could move entire flow to server
-  - Trade-off: Longer initial load, but simpler client
-  - Current approach: Client orchestrates for better UX and loading states
-- **WebSocket for Audio**: Could stream audio generation progress
-  - Trade-off: More complex implementation
-  - Future optimization when audio generation is slow
-- **Actual Image Generation**: Could integrate DALL-E, Stable Diffusion, or Imagen for `/api/modify-image`
-  - Trade-off: Additional API costs and complexity
-  - Future enhancement after core flow is working
-
-## Future Enhancements
-- Implement actual image generation in `/api/modify-image` using DALL-E or similar
-- Add ability to regenerate roast with different tone/style
-- Save favorite roasts/modifications
-- Share functionality (social media, copy link)
-- Download roast audio file
-- Batch processing for multiple costume images
